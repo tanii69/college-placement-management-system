@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+  <title>Applications Dashboard</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <style>
+
+    body{
+        background:#f1f5f9;
+        font-family:Segoe UI;
+    }
+
+    /* SIDEBAR */
+    .sidebar{
+        width:230px;
+        height:100vh;
+        position:fixed;
+        background:#0f172a;
+        color:white;
+        padding:20px;
+    }
+
+    .sidebar h4{
+        margin-bottom:30px;
+    }
+
+    .sidebar a{
+        display:block;
+        color:#cbd5e1;
+        padding:10px;
+        text-decoration:none;
+        border-radius:6px;
+        margin-bottom:8px;
+    }
+
+    .sidebar a:hover{
+        background:#1e293b;
+    }
+
+    /* MAIN */
+    .main{
+        margin-left:250px;
+        padding:20px;
+    }
+
+    /* CARDS */
+    .card{
+        border:none;
+        border-radius:12px;
+        box-shadow:0 6px 14px rgba(0,0,0,0.08);
+    }
+
+    .stat-card{
+        color:white;
+    }
+
+    .stat-number{
+        font-size:28px;
+        font-weight:bold;
+    }
+
+    .badge-no{
+        background:#ef4444;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <h4>Admin Panel</h4>
+
+  <a href="/admin/admin.html">Dashboard</a>
+  <a href="/index.html">Students</a>
+  <a href="/admin/companies.html">Companies</a>
+  <a href="/admin/applications.html">Applications</a>
+  <a href="/admin/interviews.html">Interviews</a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <h3 class="mb-4">
+    <i class="bi bi-file-earmark-text"></i> Applications Dashboard
+  </h3>
+
+  <!-- STATS -->
+  <div class="row mb-4">
+
+    <div class="col-md-4">
+      <div class="card stat-card bg-success p-3">
+        <h6>Total Applications</h6>
+        <div id="totalApps" class="stat-number">0</div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card stat-card bg-primary p-3">
+        <h6>Selected</h6>
+        <div id="selectedCount" class="stat-number">0</div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card stat-card bg-danger p-3">
+        <h6>Rejected</h6>
+        <div id="rejectedCount" class="stat-number">0</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- SEARCH -->
+  <div class="card mb-3 p-3">
+    <input type="text"
+           id="searchInput"
+           class="form-control"
+           placeholder="🔍 Search by student name..."
+           onkeyup="searchApplications()">
+  </div>
+
+  <!-- TABLE -->
+  <div class="card p-3">
+
+    <h5 class="mb-3">
+      <i class="bi bi-list"></i> All Applications
+    </h5>
+
+    <table class="table table-hover align-middle">
+
+      <thead class="table-dark">
+      <tr>
+        <th>ID</th>
+        <th>Student</th>
+        <th>Branch</th>
+        <th>Company</th>
+        <th>Role</th>
+        <th>Resume</th>
+        <th>Status</th>
+        <th>Change</th>
+      </tr>
+      </thead>
+
+      <tbody id="appTable"></tbody>
+
+    </table>
+
+  </div>
+
+</div>
+
+<script>
+
+  const baseUrl = "http://localhost:8080/applications";
+
+  async function loadApplications(){
+
+      const res = await fetch(baseUrl);
+      const data = await res.json();
+
+      const table = document.getElementById("appTable");
+      table.innerHTML = "";
+
+      let selected = 0;
+      let rejected = 0;
+
+      data.forEach(app => {
+
+          if(app.status === "SELECTED") selected++;
+          if(app.status === "REJECTED") rejected++;
+
+          let badge = "secondary";
+          if(app.status === "APPLIED") badge = "primary";
+          if(app.status === "SELECTED") badge = "success";
+          if(app.status === "REJECTED") badge = "danger";
+
+          let resumeBtn = app.student.resumePath
+              ? `<a href="http://localhost:8080/api/student/resume/${app.student.id}"
+                   target="_blank"
+                   class="btn btn-success btn-sm">View</a>`
+              : `<span class="badge badge-no">No Resume</span>`;
+
+          table.innerHTML += `
+          <tr>
+              <td>${app.id}</td>
+              <td>${app.student.name}</td>
+              <td>${app.student.branch}</td>
+              <td>${app.company.companyName}</td>
+              <td>${app.company.role}</td>
+              <td>${resumeBtn}</td>
+              <td><span class="badge bg-${badge}">${app.status}</span></td>
+              <td>
+                  <select class="form-select form-select-sm"
+                      onchange="updateStatus(${app.id},this.value)">
+                      <option value="">Change</option>
+                      <option value="APPLIED">Applied</option>
+                      <option value="SELECTED">Selected</option>
+                      <option value="REJECTED">Rejected</option>
+                  </select>
+              </td>
+          </tr>`;
+      });
+
+      totalApps.innerText = data.length;
+      selectedCount.innerText = selected;
+      rejectedCount.innerText = rejected;
+  }
+
+  /* UPDATE STATUS */
+  async function updateStatus(id,status){
+
+      if(!status) return;
+
+      await fetch(`${baseUrl}/${id}/status?status=${status}`,{
+          method:"PUT"
+      });
+
+      alert("Status Updated");
+      loadApplications();
+  }
+
+  /* SEARCH */
+  function searchApplications(){
+
+      const val = searchInput.value.toLowerCase();
+      const rows = document.querySelectorAll("#appTable tr");
+
+      rows.forEach(row=>{
+          const name = row.children[1].innerText.toLowerCase();
+          row.style.display = name.includes(val) ? "" : "none";
+      });
+  }
+
+  /* INIT */
+  loadApplications();
+
+</script>
+
+</body>
+</html>

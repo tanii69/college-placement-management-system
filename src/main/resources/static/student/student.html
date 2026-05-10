@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Student Dashboard</title>
+</head>
+<body>
+
+<h2>Student Dashboard</h2>
+
+<h3>Available Companies</h3>
+<table border="1">
+  <thead>
+  <tr>
+    <th>Company</th>
+    <th>Role</th>
+    <th>Package</th>
+    <th>Apply</th>
+  </tr>
+  </thead>
+  <tbody id="companyTable"></tbody>
+</table>
+
+<script>
+  const studentId = localStorage.getItem("studentId");
+
+  if (!studentId) {
+    alert("Please login first");
+    window.location.href = "login.html";
+  }
+
+  async function loadCompanies() {
+      const response = await fetch("http://localhost:8080/companies");
+      const companies = await response.json();
+
+      const table = document.getElementById("companyTable");
+      table.innerHTML = "";
+
+      companies.forEach(company => {
+          const row = `
+              <tr>
+                  <td>${company.companyName}</td>
+                  <td>${company.role}</td>
+                  <td>${company.packageAmount}</td>
+                  <td>
+                      <button onclick="apply(${company.id})">Apply</button>
+                  </td>
+              </tr>
+          `;
+          table.innerHTML += row;
+      });
+  }
+
+  async function apply(companyId) {
+      await fetch(
+          `http://localhost:8080/applications/apply?studentId=${studentId}&companyId=${companyId}`,
+          { method: "POST" }
+      );
+
+      alert("Applied Successfully!");
+  }
+
+  loadCompanies();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manage Companies</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
+  <style>
+    body{
+        background:#f1f5f9;
+        font-family:'Segoe UI';
+    }
+
+    /* SIDEBAR */
+    .sidebar{
+        width:230px;
+        height:100vh;
+        position:fixed;
+        background:#0f172a;
+        color:white;
+        padding:20px;
+    }
+
+    .sidebar h4{
+        margin-bottom:30px;
+    }
+
+    .sidebar a{
+        display:block;
+        color:#cbd5e1;
+        padding:10px;
+        text-decoration:none;
+        border-radius:6px;
+        margin-bottom:8px;
+    }
+
+    .sidebar a:hover{
+        background:#1e293b;
+    }
+
+    /* MAIN */
+    .main{
+        margin-left:250px;
+        padding:20px;
+    }
+
+    /* CARD */
+    .card{
+        border:none;
+        border-radius:12px;
+        box-shadow:0 6px 14px rgba(0,0,0,0.08);
+    }
+
+    /* TABLE */
+    .table{
+        background:white;
+    }
+
+    .table-container{
+        min-height:400px;
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <h4>Admin Panel</h4>
+
+  <a href="/admin/admin.html">Dashboard</a>
+  <a href="/index.html">Students</a>
+  <a href="/admin/companies.html">Companies</a>
+  <a href="/admin/applications.html">Applications</a>
+  <a href="/admin/interviews.html">Interviews</a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <h3 class="mb-4">
+    <i class="bi bi-building"></i> Company Management
+  </h3>
+
+  <div class="row">
+
+    <!-- FORM -->
+    <div class="col-md-4">
+      <div class="card p-3">
+        <h5 class="mb-3">Add Company</h5>
+
+        <input type="text" id="companyName" class="form-control mb-2" placeholder="Company Name">
+        <input type="text" id="role" class="form-control mb-2" placeholder="Role">
+        <input type="number" id="packageAmount" class="form-control mb-2" placeholder="Package">
+        <input type="number" id="eligibilityCgpa" class="form-control mb-2" placeholder="CGPA">
+        <input type="text" id="eligibleBranches" class="form-control mb-3" placeholder="IT, CSE, ECE">
+
+        <button class="btn btn-primary w-100" onclick="addCompany()">
+          Add Company
+        </button>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="col-md-8">
+      <div class="card p-3">
+
+        <div class="d-flex justify-content-between mb-3">
+          <h5>All Companies</h5>
+          <input type="text" id="searchInput" class="form-control w-50"
+                 placeholder="Search..." onkeyup="searchCompany()">
+        </div>
+
+        <div class="table-container">
+          <table class="table table-hover">
+            <thead class="table-dark">
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Role</th>
+              <th>Package</th>
+              <th>CGPA</th>
+              <th>Branches</th>
+              <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="companyTable"></tbody>
+          </table>
+        </div>
+
+        <ul class="pagination justify-content-center" id="paginationControls"></ul>
+
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  const baseUrl = "http://localhost:8080/companies";
+
+  let allCompanies = [];
+  let filteredCompanies = [];
+  let currentPage = 1;
+  const rowsPerPage = 10;
+
+  /* LOAD */
+  async function loadCompanies(){
+      const res = await fetch(baseUrl);
+      allCompanies = await res.json();
+      filteredCompanies = [...allCompanies];
+      renderTable();
+  }
+
+  /* RENDER */
+  function renderTable(){
+
+      const table = document.getElementById("companyTable");
+      const pagination = document.getElementById("paginationControls");
+
+      table.innerHTML="";
+      pagination.innerHTML="";
+
+      const start = (currentPage-1)*rowsPerPage;
+      const end = start + rowsPerPage;
+
+      const data = filteredCompanies.slice(start,end);
+
+      data.forEach(c=>{
+          table.innerHTML += `
+          <tr>
+              <td>${c.id}</td>
+              <td>${c.companyName}</td>
+              <td>${c.role}</td>
+              <td>${c.packageAmount}</td>
+              <td>${c.eligibilityCgpa}</td>
+              <td>${c.eligibleBranches}</td>
+              <td>
+                  <button class="btn btn-danger btn-sm"
+                      onclick="deleteCompany(${c.id})">Delete</button>
+              </td>
+          </tr>`;
+      });
+
+      const totalPages = Math.ceil(filteredCompanies.length / rowsPerPage);
+
+      for(let i=1;i<=totalPages;i++){
+          pagination.innerHTML += `
+          <li class="page-item ${i===currentPage?"active":""}">
+              <a class="page-link" href="#" onclick="changePage(${i})">${i}</a>
+          </li>`;
+      }
+  }
+
+  /* PAGE */
+  function changePage(p){
+      currentPage=p;
+      renderTable();
+  }
+
+  /* SEARCH */
+  function searchCompany(){
+      const val = searchInput.value.toLowerCase();
+
+      filteredCompanies = allCompanies.filter(c =>
+          c.companyName.toLowerCase().includes(val)
+      );
+
+      currentPage=1;
+      renderTable();
+  }
+
+  /* ADD */
+  async function addCompany(){
+
+      const company = {
+          companyName: companyName.value,
+          role: role.value,
+          packageAmount: packageAmount.value,
+          eligibilityCgpa: eligibilityCgpa.value,
+          eligibleBranches: eligibleBranches.value
+      };
+
+      await fetch(baseUrl,{
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body:JSON.stringify(company)
+      });
+
+      alert("Added!");
+      loadCompanies();
+  }
+
+  /* DELETE */
+  async function deleteCompany(id){
+      if(confirm("Delete?")){
+          await fetch(baseUrl+"/"+id,{method:"DELETE"});
+          loadCompanies();
+      }
+  }
+
+  /* INIT */
+  loadCompanies();
+</script>
+
+</body>
+</html>

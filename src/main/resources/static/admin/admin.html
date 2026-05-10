@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Dashboard</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body{
+            background:#f8fafc;
+            font-family:'Segoe UI';
+        }
+
+        /* SIDEBAR */
+        .sidebar{
+            width:230px;
+            height:100vh;
+            position:fixed;
+            background:#0f172a;
+            color:white;
+            padding:20px;
+        }
+
+        .sidebar h4{
+            margin-bottom:30px;
+        }
+
+        .sidebar a{
+            display:block;
+            color:#cbd5f5;
+            padding:10px;
+            text-decoration:none;
+            border-radius:8px;
+            margin-bottom:8px;
+            transition:0.3s;
+        }
+
+        .sidebar a:hover{
+            background:#1e293b;
+            color:white;
+        }
+
+        /* MAIN */
+        .main{
+            margin-left:250px;
+            padding:25px;
+        }
+
+        /* CARDS */
+        .card-box{
+            background:white;
+            border-radius:16px;
+            padding:20px;
+            box-shadow:0 6px 18px rgba(0,0,0,0.05);
+            transition:0.3s;
+        }
+
+        .card-box:hover{
+            transform:translateY(-4px);
+        }
+
+        .card-title{
+            color:#64748b;
+            font-size:14px;
+        }
+
+        .card-value{
+            font-size:28px;
+            font-weight:bold;
+        }
+
+        /* CHART */
+        .chart-box{
+            background:white;
+            padding:20px;
+            border-radius:16px;
+            box-shadow:0 6px 18px rgba(0,0,0,0.05);
+        }
+
+        .refresh-btn{
+            background:#2563eb;
+            border:none;
+            padding:6px 14px;
+            border-radius:8px;
+            color:white;
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <h4>Admin Panel</h4>
+
+    <a href="/admin/admin.html">Dashboard</a>
+    <a href="/index.html">Students</a>
+    <a href="/admin/companies.html">Companies</a>
+    <a href="/admin/applications.html">Applications</a>
+    <a href="/admin/interviews.html">Interviews</a>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+    <h3 class="mb-4">Dashboard Overview</h3>
+
+    <!-- CARDS -->
+    <div class="row g-4 mb-4">
+
+        <div class="col-md-3">
+            <div class="card-box">
+                <div class="card-title">Total Students</div>
+                <div class="card-value" id="studentCount">0</div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card-box">
+                <div class="card-title">Companies</div>
+                <div class="card-value" id="companyCount">0</div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card-box">
+                <div class="card-title">Applications</div>
+                <div class="card-value" id="applicationCount">0</div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card-box">
+                <div class="card-title">Placed Students</div>
+                <div class="card-value text-success" id="selectedCount">0</div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- CHART -->
+    <div class="chart-box">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5>Placed Students by Branch</h5>
+            <button onclick="loadDashboard()" class="refresh-btn">Refresh</button>
+        </div>
+
+        <canvas id="placementChart"></canvas>
+    </div>
+
+</div>
+
+<!-- CHART JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    let chart;
+
+    async function loadDashboard(){
+        try {
+
+            // =====================
+            // COUNTS
+            // =====================
+            const studentRes = await fetch("http://localhost:8080/api/student/count");
+            document.getElementById("studentCount").innerText = await studentRes.text();
+
+            const companyRes = await fetch("http://localhost:8080/companies");
+            const companies = await companyRes.json();
+            document.getElementById("companyCount").innerText = companies.length;
+
+            const appRes = await fetch("http://localhost:8080/applications");
+            const applications = await appRes.json();
+
+            document.getElementById("applicationCount").innerText = applications.length;
+
+            const selected = applications.filter(a => a.status === "SELECTED").length;
+            document.getElementById("selectedCount").innerText = selected;
+
+
+            // =====================
+            // BRANCH CHART
+            // =====================
+            const branchRes = await fetch("http://localhost:8080/api/student/placed-branch-analytics");
+
+            if (!branchRes.ok) throw new Error("Branch API failed");
+
+            const branchData = await branchRes.json();
+
+            const labels = Object.keys(branchData);
+            const values = Object.values(branchData);
+
+            // 🎨 Dynamic colors
+            const colors = [
+                "#3b82f6", "#22c55e", "#f97316",
+                "#a855f7", "#ef4444", "#14b8a6", "#eab308"
+            ];
+
+            const ctx = document.getElementById("placementChart").getContext("2d");
+
+            if(chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Placed Students",
+                        data: values,
+                        backgroundColor: labels.map((_, i) => colors[i % colors.length]),
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+
+        } catch (error) {
+            console.error("Dashboard Error:", error);
+        }
+    }
+
+    // INIT
+    loadDashboard();
+
+    // AUTO REFRESH (5 min)
+    setInterval(loadDashboard, 300000);
+</script>
+
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Student Dashboard | Placement Portal</title>
+
+    <!-- Bootstrap + Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #4e73df, #1cc88a);
+        }
+
+        .welcome-box {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        /* 🔔 Notification */
+        #notifBox {
+            display: none;
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            width: 340px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            padding: 10px;
+        }
+
+        .notif-card {
+            background: #f8f9ff;
+            border-left: 5px solid #4e73df;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            transition: 0.2s;
+        }
+
+        .notif-card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.15);
+        }
+
+        .notif-title { font-weight: 600; }
+        .notif-sub { font-size: 13px; color: #555; }
+        .notif-time { font-size: 12px; color: #888; }
+
+        .online { border-left-color: #1cc88a; }
+        .offline { border-left-color: #e74a3b; }
+
+        /* 🤖 Chatbot */
+        #chatbot-icon {
+            position:fixed;
+            bottom:20px;
+            right:20px;
+            background:#2563eb;
+            color:white;
+            padding:15px;
+            border-radius:50%;
+            cursor:pointer;
+        }
+
+        #chatbox {
+            display:none;
+            position:fixed;
+            bottom:80px;
+            right:20px;
+            width:320px;
+            background:white;
+            border-radius:12px;
+            box-shadow:0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .chat-header {
+            background:#2563eb;
+            color:white;
+            padding:10px;
+            display:flex;
+            justify-content:space-between;
+        }
+
+        #chat-messages {
+            height:250px;
+            overflow-y:auto;
+            padding:10px;
+        }
+
+        .chat-input { display:flex; border-top:1px solid #eee; }
+        .chat-input input { flex:1; border:none; padding:10px; }
+        .chat-input button { background:#2563eb; color:white; border:none; padding:10px; }
+
+        .bot { background:#eee; padding:6px; margin:5px; border-radius:6px; }
+        .user { background:#2563eb; color:white; padding:6px; margin:5px; border-radius:6px; text-align:right; }
+    </style>
+</head>
+
+<body>
+
+<!-- 🔔 Notification -->
+<div onclick="toggleNotifications()" style="position:fixed;top:20px;right:30px;cursor:pointer;">
+    <i class="fa-solid fa-bell text-white"></i>
+    <span id="notifCount" style="background:red;color:white;border-radius:50%;padding:2px 6px;">0</span>
+</div>
+
+<div id="notifBox"></div>
+
+<!-- Navbar -->
+<nav class="navbar navbar-dark bg-dark px-4">
+    <span class="navbar-brand">Placement Portal</span>
+</nav>
+
+<div class="container mt-4">
+
+    <div class="welcome-box">
+        Welcome, <span id="studentName">Loading...</span>
+    </div>
+
+    <!-- Resume -->
+    <div class="card p-4 mt-3">
+        <h5>Upload Resume</h5>
+        <form id="resumeForm" class="row g-2">
+            <div class="col-md-6">
+                <input type="file" id="resumeFile" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-success w-100">Upload</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Companies -->
+    <div class="card p-4 mt-3">
+        <h5>Companies</h5>
+        <table class="table text-center">
+            <thead class="table-dark">
+            <tr>
+                <th>Company</th>
+                <th>Role</th>
+                <th>Package</th>
+                <th>Eligibility CGPA</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody id="companyTable"></tbody>
+        </table>
+    </div>
+
+    <!-- Applications -->
+    <div class="card p-4 mt-3">
+        <h5>My Applications</h5>
+        <table class="table text-center">
+            <thead class="table-dark">
+            <tr><th>Company</th><th>Role</th><th>Status</th></tr>
+            </thead>
+            <tbody id="applicationTable"></tbody>
+        </table>
+    </div>
+
+
+    <!-- 🤖 Chatbot -->
+    <div id="chatbot-icon" onclick="toggleChatbot()">
+        <i class="bi bi-robot"></i>
+    </div>
+
+    <div id="chatbox">
+        <div class="chat-header">
+            Placement Assistant
+            <span onclick="toggleChatbot()">✖</span>
+        </div>
+
+        <div id="chat-messages"></div>
+
+        <div class="chat-input">
+            <input type="text" id="userInput" placeholder="Ask something..." onkeypress="handleEnter(event)">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+    let currentStudentId = null;
+    let currentStudentCgpa = 0;
+
+    /* ================= STUDENT ================= */
+    async function getStudent(){
+        const res = await fetch("/api/student/me");
+        const s = await res.json();
+
+        currentStudentId = s.id;
+        currentStudentCgpa = s.cgpa;
+
+        document.getElementById("studentName").innerText = s.name;
+
+        loadCompanies();
+        loadApplications();
+        loadNotifications();
+    }
+
+    /* ================= COMPANIES ================= */
+    async function loadCompanies(){
+        const [cRes, aRes] = await Promise.all([
+            fetch("/companies"),
+            fetch(`/applications/student/${currentStudentId}`)
+        ]);
+
+        const companies = await cRes.json();
+        const apps = await aRes.json();
+
+        const applied = apps.map(a => a.company.id);
+
+        const table = document.getElementById("companyTable");
+        table.innerHTML = "";
+
+        companies.forEach(c=>{
+            table.innerHTML += `
+            <tr>
+                <td>${c.companyName}</td>
+                <td>${c.role}</td>
+                <td>${c.packageAmount}</td>
+                <td class="fw-bold text-primary">${c.eligibilityCgpa}</td>
+                <td>
+                    ${
+                        applied.includes(c.id)
+                        ? `<button class="btn btn-secondary btn-sm" disabled>Applied</button>`
+                        : (currentStudentCgpa >= c.eligibilityCgpa
+                            ? `<button class="btn btn-success btn-sm" onclick="apply(${c.id})">Apply</button>`
+                            : `<button class="btn btn-danger btn-sm" disabled>Not Eligible</button>`
+                        )
+                    }
+                </td>
+            </tr>`;
+        });
+    }
+
+    /* ================= APPLY ================= */
+    async function apply(id){
+        const res = await fetch(`/applications/apply?studentId=${currentStudentId}&companyId=${id}`,{
+            method:"POST"
+        });
+
+        const msg = await res.text();
+
+        if(!res.ok){
+            alert(msg);
+            return;
+        }
+
+        alert("Applied successfully!");
+        loadCompanies();
+        loadApplications();
+    }
+
+    /* ================= APPLICATIONS ================= */
+    async function loadApplications(){
+        const res = await fetch(`/applications/student/${currentStudentId}`);
+        const apps = await res.json();
+
+        const table = document.getElementById("applicationTable");
+        table.innerHTML = "";
+
+        apps.forEach(a=>{
+            let color = a.status==="SELECTED"?"success":
+                        a.status==="REJECTED"?"danger":"secondary";
+
+            table.innerHTML += `
+            <tr>
+                <td>${a.company.companyName}</td>
+                <td>${a.company.role}</td>
+                <td><span class="badge bg-${color}">${a.status}</span></td>
+            </tr>`;
+        });
+    }
+
+    /* ================= RESUME ================= */
+    document.getElementById("resumeForm").addEventListener("submit", async e=>{
+        e.preventDefault();
+
+        let f = document.getElementById("resumeFile").files[0];
+
+        if(!f){
+            alert("Please select a file!");
+            return;
+        }
+
+        let fd = new FormData();
+        fd.append("file",f);
+
+        const res = await fetch(`/api/student/uploadResume/${currentStudentId}`,{
+            method:"POST",
+            body:fd
+        });
+
+        const msg = await res.text();
+
+        if(!res.ok){
+            alert(msg);
+            return;
+        }
+
+        alert("Resume uploaded successfully!");
+    });
+
+    /* ================= 🔔 NOTIFICATIONS ================= */
+    function toggleNotifications(){
+        const box = document.getElementById("notifBox");
+        box.style.display = box.style.display==="block"?"none":"block";
+    }
+
+    function joinInterview(link){
+        window.open(link, "_blank"); // ✅ FIX ADDED
+    }
+
+    async function loadNotifications(){
+
+    const [iRes, cRes] = await Promise.all([
+        fetch("/api/interviews"),
+        fetch("/companies")
+    ]);
+
+    const interviews = await iRes.json();
+    const companies = await cRes.json();
+
+    const my = interviews.filter(i => i.studentId == currentStudentId);
+
+    document.getElementById("notifCount").innerText = my.length;
+
+    const box = document.getElementById("notifBox");
+    box.innerHTML = "";
+
+    if(my.length === 0){
+        box.innerHTML = `<p class="text-center text-muted mt-2">No notifications</p>`;
+        return;
+    }
+
+    my.forEach(i => {
+
+        const c = companies.find(x => x.id === i.companyId);
+        const modeClass = i.mode === "ONLINE" ? "online" : "offline";
+
+        box.innerHTML += `
+        <div class="notif-card ${modeClass}">
+
+            <div class="notif-title">
+                <i class="bi bi-building text-primary"></i>
+                ${c?.companyName || "Company"}
+            </div>
+
+            <div class="notif-sub">
+                <i class="bi bi-briefcase text-success"></i>
+                ${c?.role || ""}
+            </div>
+
+            <div class="notif-sub">
+                <i class="bi ${i.mode === "ONLINE" ? "bi-laptop text-success" : "bi-geo-alt text-danger"}"></i>
+                ${i.mode}
+            </div>
+
+            <div class="notif-time">
+                <i class="bi bi-clock"></i>
+                ${new Date(i.interviewDate).toLocaleString()}
+            </div>
+
+            ${
+                i.mode === "ONLINE" && i.link
+                ? `<button class="btn btn-sm btn-success mt-2 w-100"
+                    onclick="window.open('${i.link}', '_blank')">
+                    🎥 Join Interview
+                  </button>`
+                : ""
+            }
+
+            ${
+                i.mode === "OFFLINE" && i.link
+                ? `<a href="${i.link}" target="_blank"
+                    class="btn btn-sm btn-danger mt-2 w-100">
+                    📍 View Location
+                  </a>`
+                : ""
+            }
+
+        </div>`;
+    });
+}
+
+    setInterval(loadNotifications,5000);
+
+    window.onload = getStudent;
+
+
+
+    /* ================= 🤖 CHATBOT ================= */
+
+function toggleChatbot(){
+    const box = document.getElementById("chatbox");
+    box.style.display = box.style.display==="block"?"none":"block";
+}
+
+function handleEnter(e){
+    if(e.key==="Enter") sendMessage();
+}
+
+function sendMessage(){
+    let input = document.getElementById("userInput");
+    let msg = input.value.trim();
+
+    if(!msg) return;
+
+    addMessage(msg,"user");
+    input.value="";
+
+    setTimeout(()=> addMessage(getReply(msg),"bot"),500);
+}
+
+function getReply(msg){
+    msg = msg.toLowerCase();
+
+    if(msg.includes("hi") || msg.includes("hello"))
+        return "Hello! I'm your Placement Assistant 🤖";
+
+    if(msg.includes("cgpa"))
+        return "Check eligibility CGPA column in company table.";
+
+    if(msg.includes("apply"))
+        return "Click Apply button if eligible.";
+
+    if(msg.includes("resume"))
+        return "Upload your resume in PDF format.";
+
+    if(msg.includes("interview"))
+        return "Check notifications 🔔 for interview details.";
+
+    if(msg.includes("preparation"))
+        return "Prepare DSA, Aptitude, Core Subjects, and Communication skills.";
+
+    return "Ask me anything about placements 😊";
+}
+
+function addMessage(text,type){
+    const chat = document.getElementById("chat-messages");
+
+    let d=document.createElement("div");
+    d.className=type;
+    d.innerText=text;
+
+    chat.appendChild(d);
+    chat.scrollTop = chat.scrollHeight;
+}
+
+</script>
+
+</body>
+</html>
