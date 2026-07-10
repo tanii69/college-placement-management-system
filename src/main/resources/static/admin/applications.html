@@ -125,7 +125,7 @@
     <input type="text"
            id="searchInput"
            class="form-control"
-           placeholder="🔍 Search by student name..."
+           placeholder="🔍 Search by ID or student name..."
            onkeyup="searchApplications()">
   </div>
 
@@ -232,14 +232,26 @@
   /* SEARCH */
   function searchApplications(){
 
-      const val = searchInput.value.toLowerCase();
-      const rows = document.querySelectorAll("#appTable tr");
+    const val = document.getElementById("searchInput").value.toLowerCase();
 
-      rows.forEach(row=>{
-          const name = row.children[1].innerText.toLowerCase();
-          row.style.display = name.includes(val) ? "" : "none";
-      });
-  }
+    const rows = document.querySelectorAll("#appTable tr");
+
+    rows.forEach(row => {
+
+        // ID column
+        const id = row.children[0].innerText.toLowerCase();
+
+        // Student Name column
+        const name = row.children[1].innerText.toLowerCase();
+
+        // Search by BOTH
+        if(id.includes(val) || name.includes(val)){
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    });
+}
 
   /* INIT */
   loadApplications();

@@ -158,35 +158,56 @@
     /* DISPLAY TABLE */
     function displayTable(){
 
-        const table = document.getElementById("studentTable");
-        table.innerHTML="";
+    const table = document.getElementById("studentTable");
 
-        const start = (currentPage-1)*rowsPerPage;
-        const end = start + rowsPerPage;
+    table.innerHTML = "";
 
-        const pageData = filteredData.slice(start,end);
+    const start = (currentPage - 1) * rowsPerPage;
 
-        pageData.forEach(s=>{
-            table.innerHTML += `
-            <tr>
-                <td>${s.id}</td>
-                <td>${s.name || ""}</td>
-                <td>${s.email}</td>
-                <td>${s.branch || "N/A"}</td>
-                <td>${s.cgpa || "-"}</td>
-                <td>
-                    <button class="btn btn-warning btn-sm"
-                        onclick='editStudent(${s.id}, "${s.name}", "${s.email}", "${s.branch}", ${s.cgpa})'>
-                        Edit
-                    </button>
-                    <button class="btn btn-danger btn-sm"
-                        onclick="deleteStudent(${s.id})">
-                        Delete
-                    </button>
-                </td>
-            </tr>`;
-        });
-    }
+    const end = start + rowsPerPage;
+
+    const pageData = filteredData.slice(start, end);
+
+    pageData.forEach(s => {
+
+        table.innerHTML += `
+
+        <tr>
+
+            <td>${s.id}</td>
+
+            <td>${s.name || ""}</td>
+
+            <td>${s.email || ""}</td>
+
+            <td>${s.branch || "N/A"}</td>
+
+            <td>${s.cgpa || "-"}</td>
+
+            <td>
+
+                <button class="btn btn-warning btn-sm"
+                    onclick='editStudent(
+                        ${s.id},
+                        ${JSON.stringify(s.name || "")},
+                        ${JSON.stringify(s.email || "")},
+                        ${JSON.stringify(s.branch || "")},
+                        ${s.cgpa || 0}
+                    )'>
+                    Edit
+                </button>
+
+                <button class="btn btn-danger btn-sm"
+                    onclick="deleteStudent(${s.id})">
+                    Delete
+                </button>
+
+            </td>
+
+        </tr>
+        `;
+    });
+}
 
     /* ADD */
     function addStudent(){
@@ -225,19 +246,26 @@
 }
 
     /* EDIT */
-    function editStudent(id,nameVal,emailVal,branchVal,cgpaVal){
+    function editStudent(id, nameVal, emailVal, branchVal, cgpaVal){
 
-        name.value = nameVal;
-        email.value = emailVal;
-        branch.value = branchVal;
-        cgpa.value = cgpaVal;
-        password.value = "";
+    document.getElementById("name").value = nameVal;
 
-        currentEditId = id;
+    document.getElementById("email").value = emailVal;
 
-        submitBtn.innerText = "Update Student";
-        submitBtn.onclick = updateStudent;
-    }
+    document.getElementById("branch").value = branchVal;
+
+    document.getElementById("cgpa").value = cgpaVal;
+
+    document.getElementById("password").value = "";
+
+    currentEditId = id;
+
+    document.getElementById("submitBtn").innerText =
+        "Update Student";
+
+    document.getElementById("submitBtn").onclick =
+        updateStudent;
+}
 
     /* UPDATE */
     function updateStudent(){

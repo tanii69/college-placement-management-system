@@ -1,8 +1,8 @@
 package com.tanisha.placement.config;
 
-import org.springframework.context.annotation.*;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -17,36 +17,49 @@ public class SecurityConfig {
 
         http
                 .csrf(csrf -> csrf.disable())
+
                 .authorizeHttpRequests(auth -> auth
 
-                        // Public
-                        .requestMatchers("/login.html").permitAll()
+                        // Public Pages
+                        .requestMatchers(
+                                "/login.html",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
+                                "/api/student/resume/**"
+                        ).permitAll()
 
-                        .requestMatchers("/api/student/resume/**").permitAll()
-
-                        // Role-Based Access
+                        // Admin Access
                         .requestMatchers("/admin/*.html").hasRole("ADMIN")
-                        .requestMatchers("/student/*.html").hasRole("STUDENT")
-
                         .requestMatchers("/admin/api/**").hasRole("ADMIN")
+
+                        // Student Access
+                        .requestMatchers("/student/*.html").hasRole("STUDENT")
                         .requestMatchers("/student/api/**").hasRole("STUDENT")
 
                         .anyRequest().authenticated()
                 )
+
                 .formLogin(form -> form
                         .loginPage("/login.html")
                         .loginProcessingUrl("/login")
                         .defaultSuccessUrl("/redirect", true)
                         .permitAll()
                 )
+
                 .logout(logout -> logout
+                        .logoutUrl("/logout")
                         .logoutSuccessUrl("/login.html")
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
+                        .permitAll()
                 );
 
         return http.build();
     }
 
     @Bean
+    @SuppressWarnings("deprecation")
     public PasswordEncoder passwordEncoder() {
         return NoOpPasswordEncoder.getInstance();
     }
